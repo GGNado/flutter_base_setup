@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -15,64 +16,63 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. WATCH: Ascoltiamo lo stato per disegnare la UI (es. mostrare spinner)
     final authState = ref.watch(authControllerProvider);
+    final isLoading = authState.isLoading;
 
-    // 2. LISTEN: Ascoltiamo gli eventi per azioni uniche (es. SnackBar, Navigazione)
     ref.listen(authControllerProvider, (previous, next) {
-      if (next.hasError) {
-        // Mostra errore
-        ScaffoldMessenger.of(context).showSnackBar(
+      if (next is AsyncError && (previous is! AsyncError || previous?.error != next.error)) {
+         ScaffoldMessenger.of(context).clearSnackBars();
+         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Errore: ${next.error}'),
-              backgroundColor: Colors.red
+            content: Text('Errore: ${next.error}'),
+            backgroundColor: Colors.red,
           ),
         );
-      } else if (next.value != null) {
-        // Login successo!
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Benvenuto ${next.value!.email}!'),
-              backgroundColor: Colors.green
-          ),
-        );
-        // Qui metterai: context.go('/home');
+      } else if (next.value != null && (previous?.value == null)) {
+         ScaffoldMessenger.of(context).clearSnackBars();
+         context.go("/home");
       }
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Clean Arch Login")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-              controller: _usernameController,
-              decoration: const InputDecoration(labelText: 'Username'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-            const SizedBox(height: 20),
+      appBar: AppBar(title: const Text('Login')),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(50.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextField(
+                controller: _usernameController,
+                enabled: !isLoading,
+                decoration: const InputDecoration(labelText: 'Username'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _passwordController,
+                enabled: !isLoading,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
+              ),
+              const SizedBox(height: 30),
 
-            // 3. LOGICA UI: Se sta caricando mostriamo la rotellina, altrimenti il bottone
-            authState.isLoading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-              onPressed: () {
-                // 4. READ: Chiamiamo l'azione SENZA ridisegnare
-                ref.read(authControllerProvider.notifier).login(
-                  _usernameController.text,
-                  _passwordController.text,
-                );
-              },
-              child: const Text("LOGIN"),
-            ),
-          ],
+              if (isLoading)
+                const CircularProgressIndicator()
+              else
+                ElevatedButton.icon(
+                  onPressed: () {
+                    FocusScope.of(context).unfocus();
+
+                    ref.read(authControllerProvider.notifier).login(
+                          _usernameController.text,
+                          _passwordController.text,
+                        );
+                  },
+                  label: const Text('Login'),
+                  icon: const Icon(Icons.login),
+                )
+            ],
+          ),
         ),
       ),
     );

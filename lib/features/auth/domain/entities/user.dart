@@ -4,4 +4,5 @@ abstract class User {
   String get email;
   String get firstName;
   String get lastName;
+  String get token;
 }

@@ -5,4 +5,5 @@ import '../entities/user.dart';
 abstract class AuthRepository {
   // Nota: Ritorna "User" (Entity), NON "UserModel" (DTO).
   Future<User> login(String username, String password);
+  Future<bool> isTokenValid(String token);
 }
