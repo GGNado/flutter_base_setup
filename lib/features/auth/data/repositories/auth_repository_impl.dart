@@ -7,8 +7,8 @@ import '../datasource/auth_local_data_source.dart';
 import '../models/user_model.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  final dio = ref.read(dioProvider);
-  final localDataSource = ref.read(authLocalDataSourceProvider);
+  final dio = ref.watch(dioProvider);
+  final localDataSource = ref.watch(authLocalDataSourceProvider);
   return AuthRepositoryImpl(dio, localDataSource);
 });
 

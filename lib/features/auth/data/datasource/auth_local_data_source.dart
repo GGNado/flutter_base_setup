@@ -7,7 +7,7 @@ import 'package:shared_preferences/src/shared_preferences_legacy.dart';
 import '../../../../core/storage/shared_prefs_provider.dart';
 
 final authLocalDataSourceProvider = Provider<AuthLocalDataSource>((ref) {
-  final prefs = ref.read(sharedPrefsProvider);
+  final prefs = ref.watch(sharedPrefsProvider);
   return AuthLocalDataSource(prefs);
 });
 

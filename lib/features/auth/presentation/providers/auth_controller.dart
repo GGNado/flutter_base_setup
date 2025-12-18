@@ -16,12 +16,13 @@ class AuthController extends AsyncNotifier<User?> {
 
   @override
   Future<User?> build() async {
-    final authLocalDataSource = ref.read(authLocalDataSourceProvider);
+    final authLocalDataSource = ref.watch(authLocalDataSourceProvider);
     final user = authLocalDataSource.getUser();
 
     if (user != null) {
-      final bool = _checkTokenValidity(user);
-      return await bool ? user : null;
+      final repository = ref.watch(authRepositoryProvider);
+      final isValid = await repository.isTokenValid(user.token);
+      return isValid ? user : null;
     }
 
     return null;
@@ -36,12 +37,6 @@ class AuthController extends AsyncNotifier<User?> {
       final repository = ref.read(authRepositoryProvider);
       return repository.login(username, password);
     });
-  }
-  
-  Future<bool> _checkTokenValidity(User user) async {
-    final repository = ref.read(authRepositoryProvider);
-    return repository.isTokenValid(user.token);
-    
   }
 
   void logout() {
