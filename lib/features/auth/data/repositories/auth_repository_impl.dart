@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/network/dio_provider.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -20,21 +21,20 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<User> login(String username, String password) async {
-        final response = await _dio.post(
-          '/api/auth/signin',
-          data: {'usernameOrEmail': username, 'password': password},
-        );
-        UserModel user = UserModel.fromJson(response.data);
-        _localDataSource.saveUser(user);
+    final response = await _dio.post(
+      '/api/auth/signin',
+      data: {'usernameOrEmail': username, 'password': password},
+    );
+    UserModel user = UserModel.fromJson(response.data);
+    _localDataSource.saveUser(user);
 
-        return user;
-    }
+    return user;
+  }
 
   @override
-  Future<bool> isTokenValid(String token) async{
-        final response = await _dio.post(
-          '/api/auth/validate',
-        );
-        return response.statusCode == 200;
+  Future<bool> isTokenValid(String token) async {
+    print("Chiamo il backend...");
+    final response = await _dio.post('/api/auth/validate');
+    return response.statusCode == 200;
   }
 }

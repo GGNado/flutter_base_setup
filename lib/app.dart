@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'core/router/router_provider.dart';
-import 'features/auth/presentation/providers/auth_controller.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -12,6 +12,8 @@ class App extends ConsumerWidget {
 
     return MaterialApp.router(
       title: 'Flutter Base Setup',
+      debugShowMaterialGrid: false,
+      showSemanticsDebugger: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,

@@ -7,6 +7,7 @@ import 'package:shared_preferences/src/shared_preferences_legacy.dart';
 import '../../../../core/storage/shared_prefs_provider.dart';
 
 final authLocalDataSourceProvider = Provider<AuthLocalDataSource>((ref) {
+  // Qui facciamo dependecy injection
   final prefs = ref.read(sharedPrefsProvider);
   return AuthLocalDataSource(prefs);
 });

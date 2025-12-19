@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_base_setup/features/user/presentation/screens/user_list.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../auth/presentation/providers/auth_controller.dart';
 
 class HomePage extends ConsumerWidget {
@@ -29,7 +31,10 @@ class HomePage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Bentornato, 👋", style: TextStyle(color: Colors.grey, fontSize: 16)),
+            const Text(
+              "Bentornato, 👋",
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
             Text(
               user?.email ?? "Utente Sconosciuto",
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -48,30 +53,7 @@ class HomePage extends ConsumerWidget {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 5,
-              itemBuilder: (context, index) {
-                return Card(
-                  elevation: 0,
-                  color: Colors.grey.shade100,
-                  margin: const EdgeInsets.only(bottom: 10),
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: Colors.white,
-                      child: Icon(Icons.check, color: Colors.green),
-                    ),
-                    title: Text("Operazione #${100 + index}"),
-                    subtitle: const Text("Completata il 12/10/2023"),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      context.go("/home/detail", extra: "Operazione #${100 + index}");
-                    },
-                  ),
-                );
-              },
-            ),
+            UserList(),
           ],
         ),
       ),
@@ -94,7 +76,11 @@ class HomePage extends ConsumerWidget {
             const SizedBox(height: 10),
             Text(
               value,
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
             Text(title, style: TextStyle(color: color.withOpacity(0.8))),
           ],
