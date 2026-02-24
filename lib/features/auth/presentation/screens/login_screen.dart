@@ -1,4 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_base_setup/core/widgets/app_text_field.dart';
+import 'package:flutter_base_setup/features/auth/presentation/widget/login_button.dart';
+import 'package:flutter_base_setup/features/auth/presentation/widget/register_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -12,88 +16,167 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  // Controller per i campi di testo
-  final _usernameController = TextEditingController(text: 'admin');
-  final _passwordController = TextEditingController(text: 'password123');
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  void onPressed() {
+    FocusScope.of(context).unfocus();
+    ref
+        .read(authControllerProvider.notifier)
+        .login(_usernameController.text, _passwordController.text);
+  }
 
   @override
   Widget build(BuildContext context) {
-    // 1. WATCH: Ascoltiamo il provider per sapere se sta caricando (isLoading).
-    // Usiamo watch perché dobbiamo ridisegnare la UI (mostrare spinner o bottoni) quando lo stato cambia.
     final authState = ref.watch(authControllerProvider);
     final isLoading = authState.isLoading;
+    final hasError = authState.hasError;
+    int? typeError;
 
-    // 2. LISTEN: Ascoltiamo gli eventi per reagire (Side Effects).
-    // Usiamo listen per navigazione e snackbar perché NON vogliamo ridisegnare il widget, ma solo eseguire un'azione una tantum.
     ref.listen(authControllerProvider, (previous, next) {
-      // GESTIONE ERRORI
-      // Controlliamo se c'è un errore NUOVO.
-      // Il check `previous?.error != next.error` evita di mostrare lo stesso errore più volte se il widget si ricostruisce.
-      if (next is AsyncError &&
-          (previous is! AsyncError || previous?.error != next.error)) {
-        ScaffoldMessenger.of(
-          context,
-        ).clearSnackBars(); // Pulizia code precedenti
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Errore: ${next.error}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      // GESTIONE SUCCESSO
-      // Se abbiamo un valore (User) e prima non l'avevamo (o eravamo null), significa che il login è riuscito.
-      else if (next.value != null && (previous?.value == null)) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        context.go("/home"); // Navigazione con GoRouter
+      if (next.value != null && (previous?.value == null)) {
+        context.go("/home");
       }
     });
 
+    if (hasError) {
+      DioException error = authState.error as DioException;
+      if (error.response == null &&
+          (error.type == DioExceptionType.connectionError ||
+              error.type == DioExceptionType.connectionTimeout)) {
+        typeError = 61;
+      } else {
+        typeError = error.response?.statusCode;
+      }
+    }
+
+    final primaryColor = Theme.of(context).primaryColor;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(50.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextField(
-                controller: _usernameController,
-                enabled: !isLoading, // Disabilita input durante il caricamento
-                decoration: const InputDecoration(labelText: 'Username'),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text("Login"),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        foregroundColor: Colors.white,
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [primaryColor, primaryColor.withValues(alpha: 0.6)],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 16.0,
               ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _passwordController,
-                enabled: !isLoading,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password'),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: const CircleAvatar(
+                      radius: 80,
+                      backgroundColor: Colors.white,
+                      child: CircleAvatar(
+                        radius: 76,
+                        backgroundImage: NetworkImage(
+                          "https://cdn-icons-png.flaticon.com/512/6325/6325109.png",
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  if (hasError) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (typeError == 401) ...[
+                            const Icon(Icons.block, color: Colors.white),
+                            const SizedBox(width: 8),
+                            const Text(
+                              "Credenziali non valide",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ] else if (typeError == 61) ...[
+                            const Icon(Icons.wifi, color: Colors.white),
+                            const SizedBox(width: 8),
+                            const Text(
+                              "Errore di connessione",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
+                  Column(
+                    children: [
+                      AppTextField(
+                        controller: _usernameController,
+                        label: "Username",
+                        icon: Icons.person,
+                        primaryColor: primaryColor,
+                      ),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        controller: _passwordController,
+                        label: 'Password',
+                        icon: Icons.lock,
+                        primaryColor: primaryColor,
+                        isPassword: true,
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          LoginButton(
+                            isLoading: isLoading,
+                            primaryColor: primaryColor,
+                            onPressed: onPressed,
+                          ),
+                          const SizedBox(width: 16),
+                          RegisterButton(onPressed: () {}),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(height: 30),
-
-              // LOGICA UI CONDIZIONALE
-              // Se carica -> Spinner
-              // Se fermo -> Bottone
-              if (isLoading)
-                const CircularProgressIndicator()
-              else
-                ElevatedButton.icon(
-                  onPressed: () {
-                    FocusScope.of(context).unfocus(); // Chiude la tastiera
-
-                    // 3. READ: Eseguiamo l'azione.
-                    // Usiamo read sul .notifier per chiamare il metodo login.
-                    ref
-                        .read(authControllerProvider.notifier)
-                        .login(
-                          _usernameController.text,
-                          _passwordController.text,
-                        );
-                  },
-                  label: const Text('Login'),
-                  icon: const Icon(Icons.login),
-                ),
-            ],
+            ),
           ),
         ),
       ),

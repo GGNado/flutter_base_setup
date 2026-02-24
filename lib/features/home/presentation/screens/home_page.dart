@@ -65,9 +65,9 @@ class HomePage extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,7 +82,7 @@ class HomePage extends ConsumerWidget {
                 color: color,
               ),
             ),
-            Text(title, style: TextStyle(color: color.withOpacity(0.8))),
+            Text(title, style: TextStyle(color: color.withValues(alpha: 0.8))),
           ],
         ),
       ),

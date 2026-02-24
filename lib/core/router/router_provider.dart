@@ -4,6 +4,7 @@ import 'package:flutter_base_setup/features/user/domain/entities/user.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/presentation/providers/auth_controller.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/user/presentation/screens/user_detail.dart';
@@ -14,10 +15,38 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 /// PROVIDER DEL ROUTER
 /// Definisce l'albero di navigazione dell'app.
+///
+/// NOTA: Il redirect controlla lo stato di autenticazione e protegge le rotte.
+/// Funziona così:
+///   - Se l'utente non è loggato e prova ad accedere a una rotta protetta → redirect a /login
+///   - Se l'utente è loggato e prova ad accedere a /login → redirect a /home
+///   - Lo splash screen (/) è sempre accessibile per il check iniziale
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/', // Parte dallo Splash Screen per controllare il token
+
+    // ─── REDIRECT / GUARD ───
+    // Questo callback viene eseguito ad OGNI navigazione.
+    // Utile per proteggere le rotte che richiedono autenticazione.
+    redirect: (context, state) {
+      final authState = ref.read(authControllerProvider);
+      final isLoggedIn = authState.hasValue && authState.value != null;
+      final isGoingToLogin = state.matchedLocation == '/login';
+      final isGoingToSplash = state.matchedLocation == '/';
+
+      // Se siamo sullo splash, lasciamo fare (sta verificando il token)
+      if (isGoingToSplash) return null;
+
+      // Se non è loggato e non sta andando al login → forza il login
+      if (!isLoggedIn && !isGoingToLogin) return '/login';
+
+      // Se è loggato e sta andando al login → manda direttamente alla home
+      if (isLoggedIn && isGoingToLogin) return '/home';
+
+      // Tutto ok, non serve redirect
+      return null;
+    },
 
     routes: [
       // --- SPLASH SCREEN (Check Iniziale) ---
@@ -51,7 +80,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 // ma mantengono la navbar visibile (se vuoi nasconderla, servono accorgimenti extra)
                 routes: [
                   GoRoute(
-                    path: 'users/detail', // URL finale: /home/user/detail
+                    path: 'users/detail', // URL finale: /home/users/detail
                     builder: (context, state) {
                       // Recuperiamo i parametri passati con 'extra'
                       final user = state.extra as UserResponse;

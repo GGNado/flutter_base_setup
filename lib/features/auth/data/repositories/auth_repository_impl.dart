@@ -7,6 +7,8 @@ import '../../domain/repositories/auth_repository.dart';
 import '../datasource/auth_local_data_source.dart';
 import '../models/user_model.dart';
 
+/// Provider che fornisce l'implementazione concreta del repository di autenticazione.
+/// Viene iniettato nei controller tramite Riverpod.
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final dio = ref.read(dioProvider);
   final localDataSource = ref.read(authLocalDataSourceProvider);
@@ -33,7 +35,9 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<bool> isTokenValid(String token) async {
-    print("Chiamo il backend...");
+    // Il token viene aggiunto automaticamente dall'interceptor in dio_provider.dart
+    // Non serve passarlo manualmente qui — l'interceptor legge il token salvato
+    // e lo aggiunge all'header Authorization di ogni richiesta.
     final response = await _dio.post('/api/auth/validate');
     return response.statusCode == 200;
   }
