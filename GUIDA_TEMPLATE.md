@@ -14,6 +14,7 @@ Questa guida è pensata per chi è **alle prime armi con Riverpod** e vuole capi
 6. [Come Aggiungere una Nuova Feature](#6--come-aggiungere-una-nuova-feature)
 7. [Pattern Comuni](#7--pattern-comuni)
 8. [Comandi Utili](#8--comandi-utili)
+9. [FAQ — Domande Frequenti](#9--faq--domande-frequenti)
 
 ---
 
@@ -553,6 +554,143 @@ void main() async {
 
 ---
 
+## 9. ❓ FAQ — Domande Frequenti
+
+Domande reali che emergono quando si lavora con questo template per la prima volta.
+
+### Q1: Devo usare SEMPRE `ref.listen` + `ref.watch` insieme?
+
+**No!** La combo serve solo quando devi fare **sia** un side-effect (navigazione, snackbar) **sia** mostrare la UI. La regola è semplice:
+
+```
+"Devo MOSTRARE qualcosa?"          → solo ref.watch + .when()
+"Devo FARE qualcosa (azione)?"     → solo ref.listen
+"Devo MOSTRARE e anche FARE?"      → ref.watch + ref.listen (caso raro)
+```
+
+**Esempio pratico**: una lista ordini NON ha bisogno di `ref.listen`. Vuoi solo mostrare loading/dati/errore:
+
+```dart
+// ✅ Basta ref.watch!
+final ordersState = ref.watch(orderControllerProvider);
+return ordersState.when(
+  loading: () => CircularProgressIndicator(),
+  error: (e, _) => Text('Errore: $e'),
+  data: (orders) => ListView.builder(/* ... */),
+);
+```
+
+**Quando serve `ref.listen`**: navigazione dopo login, snackbar dopo un'azione, logout forzato.
+
+```dart
+// ✅ ref.listen per side-effect: mostrare snackbar dopo eliminazione
+ref.listen(deleteOrderProvider, (_, next) {
+  if (next.hasValue) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Ordine eliminato!')),
+    );
+  }
+});
+```
+
+---
+
+### Q2: Nello Splash Screen, il loading come funziona esattamente?
+
+Ecco la timeline precisa di cosa succede frame per frame:
+
+```
+TEMPO    authControllerProvider    ref.listen                    ref.watch (UI)
+─────    ─────────────────────    ──────────────────────        ──────────────
+ T0      AsyncLoading              next.isLoading → non fa      .when(loading:) → Spinner 🔄
+                                   nulla                        
+ T1a     AsyncData(User)           whenData → go('/home') 🏠   .when(data:) → Spinner*
+ T1b     AsyncData(null)           whenData → go('/login') 🔑  .when(data:) → Spinner*
+ T1c     AsyncError(errore)        non è data → non fa nulla   .when(error:) → "Riprova" ❌
+```
+
+**Punti chiave**:
+- `ref.listen` e `ref.watch` reagiscono **entrambi** allo stesso cambio di stato, in parallelo
+- Nessuno "sovrascrive" l'altro: listen fa azioni, watch ricostruisce la UI
+- Durante `AsyncLoading`, il listen **non fa nulla** (il callback controlla `next.isLoading`)
+- Il listen non "riparte" dopo il watch — sono due listener separati sullo stesso provider
+
+*\*Al T1a/T1b il watch farebbe rebuild, ma la navigazione è già in corso → non vedi il cambio UI.*
+
+---
+
+### Q3: Perché usare `rethrow` nel catch invece di `return null`?
+
+Questo è l'errore più comune e più subdolo. In un `AsyncNotifier`, il valore che ritorni da `build()` diventa l'**unico** modo per Riverpod di sapere cosa è successo:
+
+```dart
+// ❌ SBAGLIATO: tutti gli errori diventano "nessun utente"
+catch (error) {
+  return null;  // Riverpod vede → AsyncData(null) → "ah, nessun utente, ok"
+}
+
+// ✅ CORRETTO: solo il 401 ritorna null, gli altri errori propagano
+on DioException catch (e) {
+  if (e.response?.statusCode == 401) {
+    return null;  // → AsyncData(null) → "token invalido, vai al login"
+  }
+  rethrow;        // → AsyncError(e) → "errore di rete, mostra Riprova"
+}
+```
+
+**La regola**: `AsyncValue` ha **3 stati per un motivo**. Se comprimi error dentro data (facendo `return null` nel catch), perdi la capacità di reagire agli errori nella UI.
+
+| Cosa fai nel catch | AsyncValue risultante | La UI può mostrare "Riprova"? |
+|---|---|---|
+| `return null` | `AsyncData(null)` | ❌ No, pensa che non c'è utente |
+| `rethrow` | `AsyncError(exception)` | ✅ Sì! |
+
+---
+
+### Q4: Perché nel caso `data` dello splash mostro ancora lo spinner?
+
+```dart
+authState.when(
+  loading: () => Spinner(),
+  data: (_) => Spinner(),    // ← Perché non mostro qualcos'altro?
+  error: (e, _) => Riprova(),
+);
+```
+
+Perché tra il momento in cui `ref.watch` fa rebuild con `AsyncData` e il momento in cui `context.go()` (dal `ref.listen`) cambia pagina, c'è **un frame** di differenza. Se in quel frame mostrassi qualcosa di diverso (tipo una pagina vuota o un testo), l'utente vedrebbe un "flash" per un istante.
+
+Lo spinner dà **continuità visiva**:
+```
+loading → spinner → AsyncData arriva → spinner (stesso!) → navigazione → nuova pagina
+```
+
+Invece di:
+```
+loading → spinner → AsyncData arriva → pagina vuota (flash!) → navigazione → nuova pagina
+```
+
+---
+
+### Q5: Qual è la differenza tra `catch (error)` e `on DioException catch (e)`?
+
+```dart
+// ❌ Pericoloso: cattura TUTTO, anche errori che non ti aspetti
+catch (error) {
+  final errorDio = error as DioException;  // CRASH se non è DioException!
+}
+
+// ✅ Sicuro: cattura SOLO DioException
+on DioException catch (e) {
+  // 'e' è già del tipo giusto, nessun cast necessario
+  // Se l'errore fosse un FormatException, NON verrebbe catturato qui
+  // → Riverpod lo gestirebbe come AsyncError (giusto!)
+}
+```
+
+**Regola**: usa sempre `on TipoSpecifico catch (e)` per catturare solo gli errori che sai come gestire. Tutto il resto deve propagarsi naturalmente.
+
+---
+
 ## 🎯 Checklist per Clonare il Template
 
 Quando cloni questo template per un nuovo progetto:
@@ -567,3 +705,4 @@ Quando cloni questo template per un nuovo progetto:
 ---
 
 > **💡 Consiglio**: Quando sei in dubbio, guarda la feature `auth` come esempio completo di tutti i layer. È il "campione" da seguire per ogni nuova feature che crei.
+
